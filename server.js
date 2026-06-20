@@ -62,7 +62,16 @@ async function start() {
   } catch (err) {
     // Don't crash: log loudly and start anyway so /health stays green and the
     // table may already exist. Queries will surface errors per-request.
-    console.error('[db] schema init failed:', err.message);
+    // Log code/errno/sqlMessage too — some driver errors have an empty message.
+    console.error('[db] schema init failed:', {
+      message: err.message,
+      code: err.code,
+      errno: err.errno,
+      sqlState: err.sqlState,
+      sqlMessage: err.sqlMessage,
+      address: err.address,
+      port: err.port,
+    });
   }
 
   app.listen(PORT, () => {
