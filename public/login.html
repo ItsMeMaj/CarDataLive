@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OBD2 Logger — Sign in</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="login-body">
+  <main class="login-card">
+    <h1 class="login-title">OBD2 Data Logger</h1>
+    <p class="login-sub">Enter PIN to continue</p>
+    <form id="login-form" autocomplete="off">
+      <input
+        id="pin-input"
+        class="pin-input"
+        type="password"
+        inputmode="numeric"
+        placeholder="••••"
+        autofocus
+      />
+      <button class="btn-primary" type="submit">Unlock</button>
+      <div id="login-error" class="login-error"></div>
+    </form>
+  </main>
+
+  <script>
+    const form = document.getElementById('login-form');
+    const input = document.getElementById('pin-input');
+    const errEl = document.getElementById('login-error');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errEl.textContent = '';
+      const pin = input.value.trim();
+      if (!pin) return;
+      try {
+        const res = await fetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin }),
+        });
+        if (res.ok) {
+          window.location.href = '/';
+        } else {
+          const data = await res.json().catch(() => ({}));
+          errEl.textContent = data.error || 'Incorrect PIN';
+          input.value = '';
+          input.focus();
+        }
+      } catch (err) {
+        errEl.textContent = 'Network error';
+      }
+    });
+  </script>
+</body>
+</html>
