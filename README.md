@@ -29,6 +29,7 @@ light-themed dashboard (vanilla JS + Chart.js — no build step, no framework).
 - [Security notes](#security-notes)
 - [Project layout](#project-layout)
 
+
 ---
 
 ## Architecture
