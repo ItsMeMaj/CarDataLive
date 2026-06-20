@@ -55,23 +55,38 @@ app.use(express.static(PUBLIC_DIR));
 
 const PORT = process.env.PORT || 3000;
 
+const SCHEMA_INIT_RETRIES = 10;
+const SCHEMA_INIT_DELAY_MS = 3000;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function start() {
-  try {
-    await initSchema();
-    console.log('[db] schema ready');
-  } catch (err) {
-    // Don't crash: log loudly and start anyway so /health stays green and the
-    // table may already exist. Queries will surface errors per-request.
-    // Log code/errno/sqlMessage too — some driver errors have an empty message.
-    console.error('[db] schema init failed:', {
-      message: err.message,
-      code: err.code,
-      errno: err.errno,
-      sqlState: err.sqlState,
-      sqlMessage: err.sqlMessage,
-      address: err.address,
-      port: err.port,
-    });
+  // Railway's MySQL internal hostname can take a few seconds to resolve after the
+  // process starts. Retry schema init a handful of times before giving up.
+  for (let attempt = 1; attempt <= SCHEMA_INIT_RETRIES; attempt++) {
+    try {
+      await initSchema();
+      console.log('[db] schema ready');
+      break;
+    } catch (err) {
+      // Don't crash: log loudly and start anyway so /health stays green and the
+      // table may already exist. Queries will surface errors per-request.
+      // Log code/errno/sqlMessage too — some driver errors have an empty message.
+      console.error(`[db] schema init failed (attempt ${attempt}/${SCHEMA_INIT_RETRIES}):`, {
+        message: err.message,
+        code: err.code,
+        errno: err.errno,
+        sqlState: err.sqlState,
+        sqlMessage: err.sqlMessage,
+        address: err.address,
+        port: err.port,
+      });
+      if (attempt < SCHEMA_INIT_RETRIES) {
+        await sleep(SCHEMA_INIT_DELAY_MS);
+      } else {
+        console.error('[db] schema init giving up after all retries; starting server anyway');
+      }
+    }
   }
 
   app.listen(PORT, () => {

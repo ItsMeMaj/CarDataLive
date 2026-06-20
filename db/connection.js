@@ -48,13 +48,25 @@ function buildPoolConfig() {
   };
 }
 
-const pool = mysql.createPool(buildPoolConfig());
+// Lazily create the pool on first use. Building it at module load is unsafe on
+// Railway: the platform injects DATABASE_URL just before the process starts, and
+// occasionally the pool was built before the vars were present — yielding an
+// empty config (host/port undefined) and ECONNREFUSED. Deferring to first call
+// guarantees the environment is fully populated when buildPoolConfig() runs.
+let _pool = null;
+
+function getPool() {
+  if (_pool === null) {
+    _pool = mysql.createPool(buildPoolConfig());
+  }
+  return _pool;
+}
 
 // Run the schema so the table exists on a fresh Railway deploy. No migrations.
 async function initSchema() {
   const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
   // schema.sql contains a single CREATE TABLE IF NOT EXISTS statement.
-  await pool.query(schema);
+  await getPool().query(schema);
 }
 
-module.exports = { pool, initSchema };
+module.exports = { getPool, initSchema };

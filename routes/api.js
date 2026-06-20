@@ -1,5 +1,5 @@
 const express = require('express');
-const { pool } = require('../db/connection');
+const { getPool } = require('../db/connection');
 const { isValidColumn } = require('../utils/columnWhitelist');
 
 const router = express.Router();
@@ -18,7 +18,7 @@ function stripNulls(row, keep = ['timestamp']) {
 // GET /api/trips — all trips, newest first, with aggregate stats.
 router.get('/trips', async (req, res) => {
   try {
-    const [rows] = await pool.query(
+    const [rows] = await getPool().query(
       `SELECT
          trip_id,
          MIN(timestamp) AS start_time,
@@ -62,7 +62,7 @@ router.get('/trips/:tripId', async (req, res) => {
     }
 
     const colList = selectCols.map((c) => (c === '*' ? '*' : `\`${c}\``)).join(', ');
-    const [rows] = await pool.query(
+    const [rows] = await getPool().query(
       `SELECT ${colList} FROM readings WHERE trip_id = ? ORDER BY timestamp ASC`,
       [tripId]
     );
@@ -80,7 +80,7 @@ router.get('/trips/:tripId', async (req, res) => {
 // GET /api/live — most recent reading + liveness flag.
 router.get('/live', async (req, res) => {
   try {
-    const [rows] = await pool.query(
+    const [rows] = await getPool().query(
       `SELECT * FROM readings ORDER BY timestamp DESC, id DESC LIMIT 1`
     );
     if (rows.length === 0) {
@@ -100,7 +100,7 @@ router.get('/live', async (req, res) => {
 // GET /api/stats — overall statistics across all trips.
 router.get('/stats', async (req, res) => {
   try {
-    const [[overall]] = await pool.query(
+    const [[overall]] = await getPool().query(
       `SELECT
          COUNT(*) AS total_readings,
          COUNT(DISTINCT trip_id) AS total_trips,
@@ -113,7 +113,7 @@ router.get('/stats', async (req, res) => {
     );
 
     // Driving time = sum of per-trip (max - min) durations.
-    const [[{ total_driving_seconds }]] = await pool.query(
+    const [[{ total_driving_seconds }]] = await getPool().query(
       `SELECT COALESCE(SUM(dur), 0) AS total_driving_seconds FROM (
          SELECT TIMESTAMPDIFF(SECOND, MIN(timestamp), MAX(timestamp)) AS dur
          FROM readings GROUP BY trip_id

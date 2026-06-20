@@ -1,5 +1,5 @@
 const express = require('express');
-const { pool } = require('../db/connection');
+const { getPool } = require('../db/connection');
 const { isDataColumn } = require('../utils/columnWhitelist');
 const { resolveTripId } = require('../utils/tripManager');
 
@@ -47,7 +47,7 @@ router.post('/data', async (req, res) => {
     const colList = columns.map((c) => `\`${c}\``).join(', ');
     const sql = `INSERT INTO readings (${colList}) VALUES (${placeholders})`;
 
-    await pool.execute(sql, values);
+    await getPool().execute(sql, values);
 
     return res.json({ received: true });
   } catch (err) {
